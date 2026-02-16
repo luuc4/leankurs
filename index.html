@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lean Quiz</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #222; min-height: 100vh; }
+.container { max-width: 600px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 1.4em; text-align: center; margin-bottom: 12px; }
+.buckets { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
+.bucket { background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 0.85em; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.bucket.b0 { border-left: 4px solid #e74c3c; }
+.bucket.b1 { border-left: 4px solid #f39c12; }
+.bucket.b2 { border-left: 4px solid #3498db; }
+.bucket.b3 { border-left: 4px solid #27ae60; }
+.card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.1); margin-bottom: 16px; }
+.question-num { font-size: 0.8em; color: #888; margin-bottom: 6px; }
+.question-text { font-size: 1.05em; font-weight: 600; margin-bottom: 16px; line-height: 1.4; }
+.hint { font-size: 0.8em; color: #888; margin-bottom: 12px; }
+.answers { display: flex; flex-direction: column; gap: 8px; }
+.answer-btn { background: #fff; border: 2px solid #ddd; border-radius: 8px; padding: 12px 14px; text-align: left; font-size: 0.95em; cursor: pointer; transition: border-color .15s, background .15s; line-height: 1.3; }
+.answer-btn:active { background: #f0f0f0; }
+.answer-btn.selected { border-color: #3498db; background: #ebf5fb; }
+.answer-btn.correct { border-color: #27ae60; background: #eafaf1; }
+.answer-btn.wrong { border-color: #e74c3c; background: #fdedec; }
+.answer-btn.missed { border-color: #27ae60; background: #eafaf1; opacity: 0.7; }
+.answer-btn:disabled { cursor: default; }
+.check-btn, .next-btn, .start-btn, .continue-btn { width: 100%; padding: 14px; border: none; border-radius: 8px; font-size: 1em; font-weight: 600; cursor: pointer; margin-top: 12px; }
+.check-btn { background: #3498db; color: #fff; }
+.check-btn:disabled { background: #bdc3c7; cursor: default; }
+.next-btn { background: #2ecc71; color: #fff; }
+.start-btn { background: #3498db; color: #fff; font-size: 1.1em; padding: 16px; }
+.continue-btn { background: #3498db; color: #fff; }
+.result { padding: 10px 14px; border-radius: 8px; margin-top: 12px; font-weight: 600; font-size: 0.95em; }
+.result.correct { background: #eafaf1; color: #27ae60; }
+.result.wrong { background: #fdedec; color: #e74c3c; }
+.summary { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.summary h2 { margin-bottom: 12px; }
+.summary-stats { margin-bottom: 16px; }
+.summary-stat { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #eee; }
+.progress-bar-bg { background: #eee; border-radius: 6px; height: 10px; margin-bottom: 16px; overflow: hidden; }
+.progress-bar { background: #27ae60; height: 100%; border-radius: 6px; transition: width .3s; }
+.round-progress { text-align: center; font-size: 0.85em; color: #888; margin-bottom: 8px; }
+.done-msg { text-align: center; padding: 40px 20px; }
+.done-msg h2 { font-size: 1.5em; margin-bottom: 12px; color: #27ae60; }
+.reset-btn { background: #e74c3c; color: #fff; border: none; border-radius: 8px; padding: 12px 20px; font-size: 1em; cursor: pointer; margin-top: 16px; }
+.none-correct-note { font-size: 0.8em; color: #888; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div class="container" id="app"></div>
+<script>
+const questions = [
+{q:"Was ist ein Produktionssystem?",a:["eine Software","ein Betrieb","eine Fabrik","Fertigungssegment"],c:[1,2,3]},
+{q:"Scientific Management ist \u2026",a:["\u2026 das Trennen der Arbeit in planende und ausf\u00fchrende T\u00e4tigkeiten","\u2026 das t\u00e4gliche Arbeitspensum wird vorgegeben","\u2026 das Durchf\u00fchren von Zeitstudien","\u2026 das Trennen von Hand- und Kopfarbeit (Funktionsmeistersystem)"],c:[0,1,2,3]},
+{q:"Das Ford Produktionssystem war gekennzeichnet durch \u2026",a:["\u2026 eine flache Hierarchie","\u2026 das Flie\u00dfband","\u2026 die Produktvielfalt","\u2026 die Flexibilit\u00e4t"],c:[1]},
+{q:"Genchi Genbutsu (Gemba) bedeutet \u2026",a:["Kampfsport trainieren","gehen und dabei etwas transportieren","gehen und sehen lernen","gehe und sieh selbst"],c:[3]},
+{q:"Taichi Ohno war ein \u2026",a:["ein Kampfsportlehrer","ein japanischer Politiker","ein Entwickler des TPS","der Besitzer von Toyota"],c:[2]},
+{q:"Die beiden S\u00e4ulen des TPS sind \u2026",a:["\u2026 Just in Time und Perfektion","\u2026 Just in Time und Jidoka","\u2026 das Standardisieren und das Perfektionieren","\u2026 Jidoka und das Perfektionieren"],c:[1]},
+{q:"Jidoka bedeutet \u2026",a:["\u2026 alles Automatisieren","\u2026 mit Autonomisation \u2013 Automation menschlicher Note","\u2026 alle Mitarbeiter schulen","\u2026 das Programmieren von Software"],c:[1]},
+{q:"Just in Time bedeutet \u2026?",a:["\u2026 bedarfssynchrone Produktion","\u2026 rechtzeitige Ankunft","\u2026 mit hohen Best\u00e4nden produzieren","\u2026 Prozesse analysieren"],c:[0]},
+{q:"Kaizen hei\u00dft \u2026",a:["\u2026 keine Ver\u00e4nderung","\u2026 laufende Ver\u00e4nderung","\u2026 Ver\u00e4nderung zum Guten","\u2026 Verbesserungsvorschlag"],c:[2]},
+{q:"Schlanke Organisationen haben den Fokus auf \u2026",a:["\u2026 ihre Mission","\u2026 ihre F\u00fchrungskultur","\u2026 ihren KVP","\u2026 ihre Vision"],c:[0,1,2,3]},
+{q:"Lean Production bedeutet \u2026",a:["\u2026 das Vermeiden von Verschwendungen","\u2026 das konsequente Ausrichten der Prozesse an den Zielen","\u2026 das schnelle planen der Produktion","\u2026 einen hohen Aufwand beim Steuern der Produktion"],c:[0,1]},
+{q:"KVP steht f\u00fcr?",a:["kontinuierlicher Ver\u00e4nderungsprozesses","konstanter Ver\u00e4nderungsprozess","koordinierte Versuchsplanung","kontinuierlicher Verbesserungsprozess"],c:[3]},
+{q:"Schlankes Management mit flacher Hierarchie bedeutet \u2026 (Teil 1)",a:["\u2026 Verschwendungen vermeiden","\u2026 auf die wertsteigernden T\u00e4tigkeiten und die damit verbundenen Prozesse konzentrieren","\u2026 Kundenorientierung","\u2026 koordinierte Versuchsplanung"],c:[0,1,2]},
+{q:"Schlankes Management mit flacher Hierarchie bedeutet \u2026 (Teil 2)",a:["\u2026 das Streben nach Perfektion","\u2026 die betroffenen Mitarbeitenden einbinden","\u2026 hoher Aufwand zum Steuern der Mitarbeitenden","\u2026 eine Produktion mit hohen Best\u00e4nden"],c:[0,1]},
+{q:"Die Vision von Toyota kann durch folgende Merkmale beschrieben werden:",a:["Null Fehler-Prinzip","100% Wertsch\u00f6pfung","One Piece Flow in Sequenz mit der Nachfrage","Sicherheit f\u00fcr den Menschen"],c:[0,1,2,3]},
+{q:"Wozu dient ein Spaghetti-Diagramm?",a:["zum Visualisieren von Arbeitsabl\u00e4ufen","zum Auswerten nach Mario Spaghetti","zum Gestalten von Arbeitspl\u00e4tzen","zur statistischen Darstellen von Kennzahlen"],c:[0]},
+{q:"William Deming war \u2026",a:["\u2026 ein Pionier f\u00fcr Methoden und Techniken im Qualit\u00e4tsmanagement","\u2026 der Entwickler des TPS","\u2026 der Entwickler von Six Sigma","\u2026 der Autor der ISO 9000 ff"],c:[0]},
+{q:"JIT bedeutet \u2026",a:["\u2026 Just in Takt","\u2026 Just in Time","\u2026 Just in Transport","\u2026 Just in Training"],c:[1]},
+{q:"Hoshin Kanri ist \u2026",a:["\u2026 eine Methode zur Qualit\u00e4tssicherung","\u2026 eine Methode zur Prozessanalyse","\u2026 eine Methode der Bestandskontrolle","\u2026 ein Entfaltungsprozess zum Erarbeiten einer Strategie"],c:[3]},
+{q:"Visualisierung von Prozessen dient \u2026",a:["\u2026 der besseren Kontrolle der Mitarbeiter","\u2026 der Arbeitsplatzgestaltung","\u2026 der einfacheren Erkennung von Abweichungen","\u2026 der Prozessverbesserung"],c:[2]},
+{q:"Six Sigma ist \u2026",a:["\u2026 ein Managementsystem zur Qualit\u00e4tsverbesserung","\u2026 eine Erfindung von Toyota","\u2026 eine statistische Verbesserung zur Qualit\u00e4tssteigerung","\u2026 eine Methode zur Bestandsoptimierung"],c:[0,2]},
+{q:"Ein Swimlane Diagramm zeigt \u2026",a:["\u2026 den Prozessablauf \u00fcber mehrere Abteilungen hinweg","\u2026 die Analyse von Problemursachen","\u2026 den Verlauf eines Flusses","\u2026 die logistischen Wege in der Produktion"],c:[0]},
+{q:"KPI steht f\u00fcr \u2026",a:["\u2026 Key Performance Indicator","\u2026 Kernprozess zur Instandhaltung","\u2026 Key Process Inventory","\u2026 Key Production Insource"],c:[0]},
+{q:"Methoden zur Visualisierung von Prozessen sind \u2026",a:["\u2026 der Arbeitsplan","\u2026 der Netzplan","\u2026 der Terminplan","\u2026 das Flussdiagramm"],c:[0,1,2,3]},
+{q:"Eine Andon Tafel ist",a:["\u2026 eine Ampel","\u2026 eine Methode zum Visualisieren von Soll/Ist-Abweichungen","\u2026 eine Methode zum Vermeiden von Fehlern","\u2026 ein Protokoll"],c:[1]},
+{q:"Kaizen wird bei Toyota definiert als \u2026",a:["\u2026 Verbesserung einmal pro Woche","\u2026 Verbesserung durch die Arbeitsvorbereitung","\u201eJeder strebt jeden Tag nach Verbesserung\u201c","\u2026 Verbesserung durch Schulungen"],c:[2]},
+{q:"Elemente von Lean Prozessen sind \u2026 (Teil 1)",a:["\u2026 Flie\u00dffertigung (Verrichtungsorientierte Fertigung/One Piece Flow)","\u2026 Gesch\u00e4ftsprozessoptimierung","\u2026 Pull Prinzip","\u2026 TPM (Total Productive Maintenance)"],c:[0,1,2,3]},
+{q:"Elemente von Lean Prozessen sind \u2026 (Teil 2)",a:["\u2026 das R\u00fcsten (SMED)","\u2026 das Bestandsmanagement","\u2026 die Visualisierung","\u2026 die Kundenorientierung"],c:[0,1,2,3]},
+{q:"TWI bedeutet \u2026",a:["\u2026 Training within Industry","\u2026 Teaching with Inspiration","\u2026 Toyota Worldwide Inventory","\u2026 nichts. Die Abk\u00fcrzung hat keine Bedeutung."],c:[0]},
+{q:"Was ist keine Verschwendungsart?",a:["Transport","Fl\u00e4che","Bestand","Fehler"],c:[1]},
+{q:"Als grundlegende Lean-Weisheit gilt \u2026",a:["\u2026 die Teamarbeit","\u2026 der KVP","\u2026 der Fluss","\u2026 das TQM"],c:[2]},
+{q:"Kreuzen Sie die Begriffe an, die nicht zu den Verschwendungsarten geh\u00f6ren! (Teil 1)",a:["Unn\u00f6tige Bewegungen","Reparaturen und Fehler","Unn\u00f6tige Prozesse","Ineffiziente Regelkreise"],c:[3]},
+{q:"Kreuzen Sie die Begriffe an, die nicht zu den Verschwendungsarten geh\u00f6ren! (Teil 2)",a:["schlechte Ergonomie","Interessenkonflikte","Best\u00e4nde","Transport"],c:[0,1]},
+{q:"PDCA steht f\u00fcr \u2026",a:["Plan Do Check Active","Plan Design Control Actual","Plan Do Check Act","Production Design Check Activities"],c:[2]},
+{q:"Ein A3 Report ist \u2026",a:["\u2026 ein Dokument der ISO 9001","\u2026 eine Vorlage zu Problemstellungen und L\u00f6sungsfindungen","\u2026 eine Reklamationserfassung","\u2026 ein Bericht zum Projektstatus"],c:[1]},
+{q:"Das Ishikawa-Diagramm \u2026",a:["\u2026 stellt die Beziehung zwischen Variablen grafisch dar","\u2026 erfasst Abweichungen systematisch und z\u00e4hlt diese zusammen","\u2026 ordnet die Hauptursache einem Problem logisch und geordnet zu","\u2026 stellt Abweichungen von Best\u00e4nden dar"],c:[2]},
+{q:"Welches M ist nicht Inhalt des Ishikawa-Diagramms?",a:["Mensch","Menge","Methode","Messung"],c:[1]},
+{q:"Was geh\u00f6rt nicht zur 5S Methode?",a:["Sortieren","S\u00e4ubern","Sensorik","Standards"],c:[2]},
+{q:"Wie berechnet man die Taktzeit",a:["\u201everf\u00fcgbare Arbeitszeit\u201c dividiert durch den \u201eBedarf der Periode\u201c","\u201eBedarf in der Periode\u201c dividiert durch die \u201eLieferzeit\u201c","Summe alle Bearbeitungszeiten","Bearbeitungszeiten plus Zwischenzeiten"],c:[0]},
+{q:"Eine Wertstromanalyse \u2026",a:["\u2026 ist ein Dokument zur Visualisierung des Prozesses","\u2026 ist eine B\u00f6rsenanalyse","\u2026 ist ein Teil der ABC-Analyse","\u2026 ist eine Bestandsanalyse"],c:[0]},
+{q:"Die Gr\u00f6\u00dfe des Kanban-Regelkreises wird definiert durch \u2026",a:["\u2026 die Lieferkosten","\u2026 die Wiederbeschaffungszeit","\u2026 die Pr\u00fcfzeit im Wareneingang","\u2026 die Leistungsf\u00e4higkeit des Staplers"],c:[1]},
+{q:"Man installiert Superm\u00e4rkte in der Fertigung \u2026",a:["\u2026 als Kleinpuffer zum \u00dcberbr\u00fccken der Wiederbeschaffungszeit","\u2026 um den Materialfluss mit kleineren Transportwagen durchf\u00fchren zu k\u00f6nnen","\u2026 als Puffer zum \u00dcberbr\u00fccken der Zeit f\u00fcr die Kundenanfragen","\u2026 um das Lager zu entlasten"],c:[0]},
+{q:"Unter Heijunka versteht man \u2026",a:["\u2026 flexible Produktion in kleinen Mengen","\u2026 Produktion in gr\u00f6\u00dferen Auftr\u00e4gen","\u2026 Produktion unter Einsatz von Robotern","\u2026 Produktion unter beherrschten Bedingungen"],c:[0]},
+{q:"KANBAN ist \u2026",a:["\u2026 eine Karte","\u2026 ein Beh\u00e4lter","\u2026 eine Lampe","\u2026 eine Stichprobe"],c:[0,1,2]},
+{q:"Kennzeichen schlanker Prozesse sind \u2026",a:["\u2026 das Dezentralisieren von Verantwortung","\u2026 wenige Schnittstellen","\u2026 hoher Koordinationsaufwand","\u2026 geringe Durchlaufzeiten und geringe Prozesskosten"],c:[0,1,3]},
+{q:"Welche Vorteile bringt die Visualisierung?",a:["Das Erh\u00f6hen der Transparenz","Hilfestellung bei der Arbeit","Steigert die Motivation der Mitarbeitenden","mehr nutzbare Wartungszeiten"],c:[0,1,2]},
+{q:"Das japanische Wort f\u00fcr Unausgeglichenheit in Prozessen lautet:",a:["Muda","Muri","Mura","Moon"],c:[2]},
+{q:"Das japanische Wort f\u00fcr personelle \u00dcberbeanspruchung lautet:",a:["Muda","Muri","Mura","Moon"],c:[1]},
+{q:"One Piece Flow bringt dem Unternehmen \u2026",a:["\u2026 geringere Flexibilit\u00e4t","\u2026 niedrigere Best\u00e4nde","\u2026 bessere Durchlaufzeiten","\u2026 keine St\u00f6rungen"],c:[1,2]},
+{q:"Durch eine U Zelle werden \u2026",a:["\u2026 die Wege l\u00e4nger","\u2026 die Wege k\u00fcrzer","\u2026 der Transport schwieriger","\u2026 keine Vorteile erzielt"],c:[1]},
+{q:"Ein Schrittmacher-Prozess ist \u2026",a:["\u2026 der Taktgeber im Personal Training","\u2026 der Taktgeber f\u00fcr den Wertstrom","\u2026 der Taktgeber f\u00fcr den internen Transport","\u2026 der Taktgeber f\u00fcr die fehlerfreie Produktion"],c:[1]},
+{q:"Beispiele f\u00fcr visuelles Management sind:",a:["Zoning","5S","visuelle Arbeitsanweisungen","TPM"],c:[0,1,2]},
+{q:"Das Pull Prinzip ist gekennzeichnet durch:",a:["Materialfluss entspricht dem Informationsfluss","Material- und Informationsfluss verlaufen einander entgegengesetzt","Hat mit Material- und Informationsfluss keinen Zusammenhang","Material- und Informationsfluss werden durch externe Berater definiert"],c:[1]},
+{q:"Das Push Prinzip ist gekennzeichnet durch \u2026",a:["\u2026 niedrige Best\u00e4nde","\u2026 \u00dcberproduktion","\u2026 dezentrale Steuerung","\u2026 niedrigen Informations- und Planungsaufwand"],c:[1]},
+{q:"Die Formel f\u00fcr den Kundentakt lautet:",a:["\u201eArbeitszeit im Zeitraum\u201c dividiert durch \u201eKundenbedarf im Zeitraum\u201c","\u201eArbeitszeit im Zeitraum\u201c dividiert durch die \u201eProduktionsmenge\u201c","\u201eKundenbedarf im Zeitraum\u201c dividiert durch \u201eArbeitszeit im Zeitraum\u201c","\u201eOutput\u201c dividiert durch \u201eInput\u201c"],c:[0]},
+{q:"Ablauf im Kanban:",a:["Der verbrauchende Prozess \u201ezieht\u201c die Mengen aus dem vorgehenden Prozess","Der vorgelagerte Prozess bringt dem nachgelagerten Prozess die erforderliche Menge","Es werden nur Wochenlosgr\u00f6\u00dfen an den nachgelagerten Prozess geliefert","Es wird nur in Tageslosgr\u00f6\u00dfen an den nachgelagerten Prozess geliefert"],c:[0]},
+{q:"Kanbanarten k\u00f6nnen sein:",a:["Entnahmekanban","Produktionskanban","Logistikkanban","Bestellkanban"],c:[0,1]},
+{q:"Welche Vorteile bringt Kanban?",a:["Kanban verringert die \u00dcberproduktion","Kanban hat einen geringeren Bedarf an Lagerfl\u00e4chen","Kanban vermindert die Best\u00e4nde","Reduziert den Aufwand f\u00fcr die \u201eTerminjagd\u201c"],c:[0,1,2,3]},
+{q:"\u201eMilk Run\u201c bedeutet \u2026",a:["\u2026 das Abholen von Teilen","\u2026 das Abholen von Teilen in einer zeitlich bestimmten Rundtour","\u2026 das Abholen von Teilen durch Mitarbeitende der Fertigung","\u2026 das Abholen von Teilen in einer Rundtour"],c:[1]},
+{q:"F\u00fcr die Berechnung des Supermarktbestandes ben\u00f6tigt man \u2026",a:["\u2026 die Wiederbeschaffungsmenge","\u2026 den Minimalbestand","\u2026 den Maximalbestand","\u2026 den Sicherheitsfaktor"],c:[0,1,2,3]},
+{q:"\u201eFrontal Loading\u201c bedeutet \u2026",a:["einen LKW zu beladen","einen direkten Zugang zum Material f\u00fcr die Mitarbeitenden am Montagearbeitsplatz","es gibt visuelle Materialpuffer in der Produktion","es stehen Beh\u00e4lter f\u00fcr den Ausschuss zur Verf\u00fcgung"],c:[1]},
+{q:"Ein \u201eSmall Train\u201c ist \u2026",a:["\u2026 eine Materialanlieferung mit der Eisenbahn","\u2026 ein Logistikzug f\u00fcr den Materialtransport im Betrieb nach dem Milk Run-Prinzip","\u2026 ein Informationspunkt mit Kennzahlen","\u2026 die Festlegung der Anlieferungen f\u00fcr einen bestimmten Wochentag"],c:[1]},
+{q:"Chaku ist der japanische Begriff f\u00fcr \u2026",a:["\u2026 das Laden","\u2026 das Warten","\u2026 das nicht genutzte Potential von Mitarbeitenden","\u2026 Fehler"],c:[0]},
+{q:"Das Produktionsprinzip \u201ePull\u201c",a:["\u2026 bedeutet es wird nach dem Eintreffen von Kundenbestellungen produziert","\u2026 hat keine Bedeutung","\u2026 bedeutet Produktion in einer U Zelle","\u2026 benennt die Produktionssteuerung"],c:[0]},
+{q:"JIS bedeutet \u2026",a:["\u2026 Just in Saison","\u2026 Just in Sequence","\u2026 Just in Serie","\u2026 Just in Separation"],c:[1]},
+{q:"Was geh\u00f6rt nicht zu den 5 R der Logistik?",a:["richtiges Material","richtige Zeit","richtiger Ort","richtiges Transportmittel"],c:[3]},
+{q:"Heijunka bedeutet \u2026",a:["\u2026 nivellierte Produktion","\u2026 Null Fehler-Philosophie","\u2026 Fehler vermeiden","\u2026 Produktionssteuerung"],c:[0]},
+{q:"Unter Heijunka versteht man \u2026 (Teil 2)",a:["\u2026 h\u00e4ufig mengenm\u00e4\u00dfig kleine Auftr\u00e4ge produzieren","\u2026 Auftr\u00e4ge in einem l\u00e4ngeren Zeitraum erledigen","\u2026 Auftr\u00e4ge zu Wochenlosgr\u00f6\u00dfen zusammenfassen","\u2026 wenig kleine Auftr\u00e4ge produzieren"],c:[0]},
+{q:"Eine ABC-Analyse bedeutet \u2026",a:["\u2026 Produkte/Materialien nach ihrem Anteil am Gesamtwert zu kategorisieren","\u2026 Lieferzeitr\u00e4ume in Kategorien einzuteilen","\u2026 den Markt f\u00fcr die k\u00fcnftige Strategie eines Produzenten zu analysieren","\u2026 Prozesse nach einer bestimmten Methode zu analysieren"],c:[0]},
+{q:"Eine XYZ-Analyse \u2026",a:["\u2026 ist eine Form der Mengenanalyse","\u2026 Produkte/Materialien nach ihrem Anteil am Gesamtwert zu kategorisieren","\u2026 Lieferzeitr\u00e4ume in Kategorien einzuteilen","\u2026 den Markt f\u00fcr die k\u00fcnftige Strategie eines Produzenten zu analysieren"],c:[0]},
+{q:"Welches ist kein Ziel von Lean Logistik?",a:["intelligente Lieferantenanbindung, kleine Losgr\u00f6\u00dfen, hohe Flexibilit\u00e4t, entkoppelte Produktion","intelligente Verpackungskonzepte","intelligenter Materialtransport, Direktbereitstellung","schnelle Entnahme des Materials durch den Mitarbeitende in der Montage"],c:[3]},
+{q:"Welche der get\u00e4tigten Aussagen ist im Zusammenhang mit Lean richtig?",a:["Der betriebliche Leistungsprozess muss sich aus dem Kundennutzen definieren.","Das Auffinden und Eliminieren von Verschwendung ist eine st\u00e4ndige Aufgabe in der Wertsch\u00f6pfungskette.","Perfektion ist erreicht, wenn man nichts mehr hinzuf\u00fcgen kann.","Die Logistik hat bei Lean Production nur geringe Bedeutung"],c:[0,1]},
+{q:"Werkzeuge zur Losgr\u00f6\u00dfenoptimierung sind \u2026",a:["\u2026 R\u00fcstzeiten minimieren","\u2026 fehlerfreie Prozesse","\u2026 st\u00e4ndiger Kundenkontakt","\u2026 niedrige Best\u00e4nde"],c:[0,1]},
+{q:"Welche der genannten Punkte sind im Lean von besonderer Bedeutung?",a:["Zykluszeit","R\u00fcstzeit","Maschinenzuverl\u00e4ssigkeit","Anzahl der Produktvarianten"],c:[0,1,2,3]},
+{q:"Wodurch ist eine optimierte Lieferkette gekennzeichnet?",a:["minimale Lagerhaltung","hoher Dispositionsaufwand","minimale Durchlaufzeit","optimierte Logistikkosten"],c:[0,2,3]},
+{q:"Was sind typische Symptome eines falschen Flusses?",a:["Die Mitarbeitenden warten auf Material.","Mitarbeitende f\u00fchren nicht taktgebundene Nebent\u00e4tigkeiten aus.","Probleme und St\u00f6rungen sind schnell erkennbar.","Kurze Durchlaufzeiten"],c:[0,1]},
+{q:"Was ist keine Voraussetzung f\u00fcr Kanban?",a:["Der Aufbau einer Flie\u00dffertigung","Eine gegl\u00e4ttete Produktion","Kleine Losgr\u00f6\u00dfen","flexible Arbeitszeiten"],c:[3]},
+{q:"Kanban arbeitet nach dem \u2026",a:["\u2026 Push- Prinzip","\u2026 Pull- Prinzip","\u2026 FIFO-Prinzip","\u2026 Ford-Produktionssystem"],c:[1]},
+{q:"Was ist kein Vorteil des Pull-Systems?",a:["kurze Durchlaufzeiten","geringe Best\u00e4nde","hohe Flexibilit\u00e4t","optimierte Bearbeitungszeit"],c:[3]},
+{q:"Ein 8D-Report ist \u2026",a:["\u2026 ein Dokument zur strukturierten Reklamationsbearbeitung","\u2026 ein j\u00e4hrlicher Qualit\u00e4tsbericht an die Gesch\u00e4ftsleitung","\u2026 eine Fehlersammelliste","\u2026 ein Dokument zur Fehlerbewertung"],c:[0]},
+{q:"Welche Kosten werden durch Best\u00e4nde verursacht?",a:["Zinsen f\u00fcr gebundenes Kapital","Bestandsabschreibung","Lagerverwaltung und Handling","R\u00fcstkosten"],c:[0,1,2]},
+{q:"Poka Yoka \u2026",a:["\u2026 ist ein japanisches Brettspiel","\u2026 bedeutet Fehler vermeiden","\u2026 bedeutet Best\u00e4nde reduzieren","\u2026 bedeutet \u00dcberproduktion zu verhindern"],c:[1]},
+{q:"Was bedeutet FMEA?",a:["Fehler M\u00f6glichkeit Eingaben Analyse","Fehler Messung Einfluss Abweichung","Fehler M\u00f6glichkeit Einfluss Analyse","Fehler Messung Einfluss Analyse"],c:[2]},
+{q:"Was bedeutet TPM?",a:["Total Process Management","Total Productive Management","Total Process Maintenance","Total Productive Maintenance"],c:[3]},
+{q:"Prim\u00e4re Ziele von TPM sind:",a:["Die Anlageneffektivit\u00e4t ist erh\u00f6ht.","Die Sauberkeit ist erh\u00f6ht","Die Lebensdauer der Anlagen ist erh\u00f6ht","Die Auslastung der Anlagen ist erh\u00f6ht"],c:[0,2]},
+{q:"Bausteine von TPM sind:",a:["autonome und geplante Instandhaltung","Arbeitssicherheit und Gesundheitsschutz","Umweltschutz","Qualit\u00e4tssicherung"],c:[0,1,2,3]},
+{q:"Die Effizienz von Produktionseinrichtungen wird beeinflusst durch \u2026 (Teil 1)",a:["\u2026 Anlagenausf\u00e4lle","\u2026 R\u00fcsten und einstellen","\u2026 Werkzeugwechsel","\u2026 geplante Stillst\u00e4nde"],c:[0,1,2]},
+{q:"Die Effizienz der Produktionseinrichtungen wird beeinflusst durch \u2026 (Teil 2)",a:["\u2026 Anfahrverluste","\u2026 Kurzstillst\u00e4nde","\u2026 Ausschuss und Nacharbeit","\u2026 geplante Stillst\u00e4nde"],c:[0,1,2]},
+{q:"Die Formel zur Berechnung der Gesamtanlageneffektivit\u00e4t lautet \u2026",a:["\u201eVerf\u00fcgbarkeit\u201c mal \u201eLeistung\u201c mal \u201eQualit\u00e4tsrate\u201c","\u201eStillstandzeit\u201c mal \u201eLeistung\u201c mal \u201eQualit\u00e4tsrate\u201c","\u201eVerf\u00fcgbarkeit\u201c mal \u201eAusbringung\u201c mal \u201eAusschuss\u201c","\u201eLaufzeit\u201c mal \u201eLeistung\u201c mal \u201eQualit\u00e4tsrate\u201c"],c:[0]},
+{q:"Nennen Sie bedeutende Kennzahlen in der Instandhaltung!",a:["Mean time to Rep. = Summe der Rep.zeit/Anzahl der Fehler","Mean time between Failure = Betriebszeit/Anzahl der Fehler","No touch time = Zeitspanne in der keine Eingriffe n\u00f6tig sind.","Shut Down Maintenance"],c:[0,1,2]},
+{q:"Welche Angaben kennzeichnen den OEE-Wert? (Teil 1)",a:["Laufzeit","Nettobetriebszeit","Kalenderzeit","keine der oben genannten Angaben"],c:[0,1]},
+{q:"Welche Angaben kennzeichnen den OEE-Wert? (Teil 2)",a:["Nutzbare Betriebszeit","Netto Produktivzeit","Kalenderzeit","keine der oben genannten Angaben"],c:[0,1]},
+{q:"Instandhaltung wird gegliedert in:",a:["Wartung","Inspektion","Instandsetzung","Standardisierung"],c:[0,1,2]},
+{q:"Welche der folgenden Punkte z\u00e4hlen nicht zu den 8 Bausteinen von TPM?",a:["Zielgerichteter KVP","Autonome Instandhaltung","Geplante Instandhaltung","Kompetenzmanagement"],c:[]},
+{q:"TEEP bedeutet",a:["Total Effective Equipment Performance","Total Every Part Every Interval","Total Effective Equipment Production","Total Effective Equipment Procurement"],c:[0]},
+{q:"Welche der Angaben ist eine Methode zur R\u00fcstzeitoptimierung?",a:["SMED","MRP","TWI","KPI"],c:[0]},
+{q:"Durch welche Ma\u00dfnahme kann die Maschinenkapazit\u00e4t erh\u00f6ht werden?",a:["Poka Yoke","Maschinenoptimierung","R\u00fcstoptimierung","4 Phasen der Instandhaltung"],c:[0,1,2,3]},
+{q:"Was sind die Vorteile von optimiertem R\u00fcsten?",a:["Produktivit\u00e4tssteigerung","Durchlaufzeitverk\u00fcrzung","Kostensenkung","Qualit\u00e4tssicherung"],c:[0,1,2]},
+{q:"Was bedeutet OEE?",a:["Die Anzahl Kanban","Die Gesamtanlageneffektivit\u00e4t","Durchlaufzeit","Keine Bedeutung"],c:[1]},
+{q:"Was ist die SMED-Methode?",a:["Single Minute Exchange of Die","Single Machine Exchange of Die","Keine Bedeutung","R\u00fcsten im Minutentakt"],c:[0,3]},
+{q:"Die 5W-Methode \u2026",a:["\u2026 ist ein Werkzeug, welches im Projektmanagement eingesetzt wird.","\u2026 ist ein Werkzeug, welches im Qualit\u00e4tsmanagement eingesetzt wird.","\u2026 findet die Ideen f\u00fcr eine Probleml\u00f6sung.","\u2026 nutzt von den \u201cW-Fragen\u201d hauptsächlich das Fragewort \u201eWarum\u201c"],c:[1,3]},
+{q:"Die Anwendung der 5W-Methode \u2026",a:["\u2026 ist in Verbindung mit dem Ishikawa-Diagramm nicht sinnvoll.","\u2026 ist einfach und schnell in der Produktion anwendbar.","\u2026 etabliert die Kultur des Nachfragens im Unternehmen."],c:[1,2]},
+{q:"Wie geht man bei der 5W-Methode vor?",a:["Problem beschreiben/Ursache analysieren/Abstellma\u00dfnahmen/Wirksamkeit \u00fcberpr\u00fcfen","Ursache analysieren/Problem beschreiben/Abstellma\u00dfnahmen/Wirksamkeit \u00fcberpr\u00fcfen","Ursache analysieren/Abstellma\u00dfnahmen/Problem beschreiben/Wirksamkeit \u00fcberpr\u00fcfen","Ursache analysieren/Problem beschreiben/Wirksamkeit \u00fcberpr\u00fcfen Abstellma\u00dfnahmen"],c:[0]},
+{q:"Welche Fragen unterst\u00fctzen die Problembeschreibung bei der 5W-Methode?",a:["Was ist genau passiert?","Wo ist das Problem aufgetreten?","Wer ist der Schuldige?","Wer hat das Problem entdeckt?"],c:[0,1,3]},
+{q:"Wie geht man bei der Ursachenanalyse bei der 5W-Methode vor?",a:["Es wird so lange warum gefragt bis die Ursache des Problems gefunden wird.","Wenn auf die Warum-Frage eine Antwort erfolgt, wird diese mit einer erneuten Warum-Formulierung hinterfragt.","Man darf auf keinen Fall \u00f6fter als 5 Warum-Fragen stellen, da man sonst zu tief in das Problem gelangt.","Die Ursachenanalyse muss schnell gehen."],c:[0,1]},
+{q:"Was ist bei den Abstellma\u00dfnahmen zu beachten?",a:["Hat man die Ursache gefunden, gen\u00fcgt es geeignete Abstellma\u00dfnahmen zu diskutieren.","Der Ma\u00dfnahmenplan mit Verantwortlichen und Zeitvorgaben unterst\u00fctzt die Umsetzung.","Die getroffenen Ma\u00dfnahmen m\u00fcssen sich nicht auf das Problem beziehen.","Es ist egal wann die Ma\u00dfnahmen umgesetzt werden."],c:[1]},
+{q:"Was ist bei der \u00dcberpr\u00fcfung der Wirksamkeit zu beachten?",a:["Direkt nach dem Umsetzen sollte das Ergebnis der Ma\u00dfnahmen nicht kontrolliert werden.","Sind die Ma\u00dfnahmen wirksam oder existiert das Problem noch immer.","Wenn es sich um eine wiederkehrende Ma\u00dfnahme handelt, ist eine regelm\u00e4\u00dfige wiederholende Kontrolle nicht sinnvoll.","Die Wirksamkeit ergibt sich aus der Ma\u00dfnahme. Sie ist daher nicht eigens zu \u00fcberpr\u00fcfen"],c:[1]},
+{q:"Welche Regeln sind beim Durchf\u00fchren der 5W-Methode zu beachten?",a:["Immer direkt bei den Prozessbeteiligten die Fakten erfragen.","Nie vor Ort das Problem zeigen lassen, da man so unn\u00f6tige Diskussionen vermeiden kann.","Solange \u201eWarum?\u201c fragen, bis die tats\u00e4chliche Ursache gefunden ist.","Ob man die tats\u00e4chliche Ursache gefunden hat, erkennt man mit einer \u201eWenn-dann-Feststellung\u201c."],c:[0,2,3]},
+{q:"Welche Nachteile hat die 5W-Methode?",a:["Oft gibt es nicht nur eine Ursache, sondern mehrere. Man muss sich entscheiden, welchen Pfad man verfolgt.","Es gibt immer nur eine Ursache f\u00fcr ein Problem, darum ist die 5W-Methode daf\u00fcr nicht geeignet.","Die Ergebnisse stehen in keinem Verh\u00e4ltnis zu dem Aufwand der 5W-Methode","Die 5W-Methode ist in unserem Kulturkreis nicht anwendbar."],c:[0]},
+{q:"Die 5S-Methode \u2026 (Teil 1)",a:["\u2026 ist ein fundamentaler Baustein des Lean Management.","\u2026 eliminiert Verschwendungen am einzelnen Arbeitsplatz durch das Standardisieren der Arbeitsabl\u00e4ufe.","\u2026 hat ausschlie\u00dflich mit Sauberkeit am Arbeitsplatz zu tun.","\u2026 ist eine unn\u00f6tige Mehrbelastung der Mitarbeitenden"],c:[0,1]},
+{q:"Die 5S-Methode \u2026 (Teil 2)",a:["\u2026 setzt nur bei den Arbeitspl\u00e4tzen der Mitarbeitenden an.","\u2026 setzt nur bei den Prozessen der Mitarbeiter an.","\u2026 setzt bei den Arbeitspl\u00e4tzen und Prozessen der Mitarbeitenden an."],c:[2]},
+{q:"Die Hauptziele der 5S-Methode sind \u2026 (Teil 1)",a:["\u2026 Ordnung und Sauberkeit","\u2026 Qualit\u00e4t","\u2026 Ergonomie am Arbeitsplatz, Verbesserung der Arbeitssicherheit","\u2026 Wiedereingliederung in den Arbeitsprozess nach langer Krankheit"],c:[0,1,2]},
+{q:"Die Hauptziele der 5S-Methode sind \u2026 (Teil 2)",a:["\u2026 Ergonomie am Arbeitsplatz, Verbesserung der Arbeitssicherheit","\u2026 Wiedereingliederung in den Arbeitsprozess nach langer Krankheit","\u2026 Effizienz bzw. Wirtschaftlichkeit","\u2026 betriebliche Gesundheitsf\u00f6rderung"],c:[0,2]},
+{q:"In welchen Schritten wird die 5S Methode durchgef\u00fchrt?",a:["Selbstdisziplin, Sortieren, Standards setzen, Sauberkeit schaffen, Systematisch anordnen","Sortieren, Systematisch anordnen, Sauberkeit schaffen, Standards setzen, Selbstdisziplin","Sauberkeit schaffen, Sortieren, Standards setzen, Selbstdisziplin, Systematisch anordnen","Selbstdisziplin, Sauberkeit schaffen, Sortieren, Standards setzen, Systematisch anordnen"],c:[1]},
+{q:"Was muss bei Sortieren (5S) gemacht werden?",a:["Nicht ben\u00f6tigte Teile, Komponenten und Werkzeuge entfernen.","Selten ben\u00f6tigte Teile am Arbeitsplatz lassen.","St\u00e4ndig ben\u00f6tigte Teile vom Arbeitsplatz entfernen.","Alles so belassen wie es am Arbeitsplatz vorgefunden wird."],c:[0]},
+{q:"Was muss beim systematischen Anordnen (5S) gemacht werden?",a:["Arbeitsmittel werden ergonomisch an Schattenboards angeordnet.","Arbeitsmittel werden soweit m\u00f6glich in K\u00e4sten versperrt.","Jedem werden alle Arbeits- und Betriebsmittel zur Verf\u00fcgung gestellt.","Das Anordnen folgt keinen Regeln."],c:[0]},
+{q:"Was muss beim Schaffen von Sauberkeit und Ordnung (5S) gemacht werden?",a:["Das Schaffen von standardisierten Arbeitspl\u00e4tzen.","Abweichungen erkennen, dem Vorgesetzten melden und die Arbeit einstellen.","St\u00f6rquellen erkennen und wenn m\u00f6glich selbst beheben.","Reinigen nur durch Anweisung des Vorgesetzten."],c:[]},
+{q:"Was sollte beim Setzen von Standards (5S) nicht gemacht werden?",a:["Neue Standards von einzelnen Arbeitspl\u00e4tzen nie wo anders anwenden.","Die neuen Vorgaben stetig nach PDCA weiterentwickeln.","Die produktionsspezifischen Ziele werden geheim festgehalten.","Die Ziele auf Arbeitslayouts und Wartungsrichtlinien ableiten."],c:[2]},
+{q:"Was muss bei der Selbstdisziplin (5S) beachtet werden?",a:["Standardisieren verhindert die Mitarbeiterentwicklung.","Durch Standardisieren k\u00f6nnen Mitarbeitende Qualit\u00e4tsrichtlinien schneller verinnerlichen.","Das Management fordert Ziele durch regelm\u00e4\u00dfige 5S-Audits ein.","Abweichungen sind normal und m\u00fcssen \u00fcbergangen werden."],c:[1,2]},
+{q:"Was bringt ein nach 5S gestalteter Arbeitsplatz? (Teil 1)",a:["erh\u00f6hte Produktivit\u00e4t","verbesserte Prozess- und Produktqualit\u00e4t","ver\u00e4rgerte Mitarbeiter","verringerte Umlaufbest\u00e4nde"],c:[0,1]},
+{q:"Was bringt ein nach 5S gestalteter Arbeitsplatz? (Teil 2)",a:["verringerte Umlaufbest\u00e4nde","verschwendungsarme Prozesse","kompliziertere Kommunikation im Team","standardisierte Abl\u00e4ufe"],c:[1,3]},
+{q:"Was bedeutet SMED-Methode?",a:["SMED bedeutet \u201eSingle Minute Exchange of Die\u201c","Sinngem\u00e4\u00df: \u201eSchnelles Umr\u00fcsten unter 10 Minuten\u201c","Mit SMED werden R\u00fcstzeiten zur G\u00e4nze beseitigt.","\u201eSMED\u201c bedeutet \u201eSuper Medicine\u201c"],c:[0]},
+{q:"Worum geht es bei der SMED-Methode?",a:["Zum Verringern der R\u00fcst- und Einstellzeit entwickelt.","Der Schwerpunkt liegt nicht auf dem Ansatz, R\u00fcstzeiten durch konsequente Arbeitsorganisation zu reduzieren.","Durch die Trennung in interne/externe T\u00e4tigkeiten kann man externe an Fremdfirmen vergeben.","Mit SMED kann die Bearbeitungszeit des Werkst\u00fccks reduziert werden."],c:[0,1]},
+{q:"Bei welchen Prozessen wird die SMED-Methode angewendet? (Teil 1)",a:["Maschinenprozesse","Entwicklungsprozesse","Verbesserungsprozesse","Innovationsprozesse"],c:[0]},
+{q:"Bei welchen Prozessen wird die SMED-Methode angewendet? (Teil 2)",a:["Entwicklungsprozesse","Verbesserungsprozesse","Innovationsprozesse","Produktionsprozesse"],c:[3]},
+{q:"Was versteht man unter einer R\u00fcstzeit?",a:["Die Zeit die ein Mitarbeiter zur Regeneration ben\u00f6tigt.","Die Zeit vom Produktionsende des letzten Gutteils bis zum Erhalt von Gutteilen des n\u00e4chsten Produkts.","Die Zeit, in der man Waffen beschaffen kann.","Die Zeit in der man eine Ritterr\u00fcstung anziehen kann."],c:[1]},
+{q:"Was geh\u00f6rt nicht zum R\u00fcstablauf?",a:["Abtransport der gefertigten Teile und Abmelden des alten Auftrags.","Anmelden des neuen Auftrags, Bereitstellen aller Materialien.","Die Betriebsanleitung der Maschine lesen.","Ausbauen der zuvor ben\u00f6tigten Vorrichtungen und Werkzeuge."],c:[2]},
+{q:"Was geh\u00f6rt nicht zum R\u00fcstablauf? (Teil 2)",a:["Das Montieren der Vorrichtungen und Werkzeuge.","Das Justieren von Werkzeugen und Vorrichten.","Das Einstellen der Prozessparameter","Das Fertigen von Probest\u00fccken"],c:[]},
+{q:"Was geh\u00f6rt nicht zum R\u00fcstablauf? (Teil 3)",a:["Das Einstellen der Prozessparameter","Das Fertigen von Probest\u00fccken","Das Messen und Beurteilen von Ergebnissen","Das Korrigieren von Prozessparametern und nochmaliges Testen"],c:[]},
+{q:"Welche Phasen beinhaltet die Reduzierung der Umr\u00fcstzeit durch SMED?",a:["Phase 1: In internes und externes Umr\u00fcsten trennen","Phase 2: Internes in externes Umr\u00fcsten umwandeln","Phase 3: Internes Umr\u00fcsten reduzieren","Phase 4: ABC-Analyse bzgl. R\u00fcstanteil und 5S Audit"],c:[0,1,2]},
+{q:"Was versteht man unter internes und externes Umr\u00fcsten?",a:["Externe Vorg\u00e4nge: R\u00fcstt\u00e4tigkeiten bei laufendem Produktionsbetrieb.","Interne Vorg\u00e4nge: R\u00fcstt\u00e4tigkeiten nur bei Maschinenstillstand.","Externe Vorg\u00e4nge: nur von Facharbeitern.","Interne Vorg\u00e4nge: von Hilfskr\u00e4fte."],c:[0,1]},
+{q:"Vorgehensweise in Phase 1 bei SMED?",a:["R\u00fcstvorg\u00e4nge klassifizieren, aufzeichnen, Potenzial ermitteln, trennen.","Aufzeichnen, klassifizieren, Potenzial ermitteln, trennen.","Potenzial ermitteln, aufzeichnen, klassifizieren, trennen.","Trennen, aufzeichnen, klassifizieren, Potenzial ermitteln."],c:[0]},
+{q:"Welche Aufgaben geh\u00f6ren nicht zum Vorgehen in Phase 2 bei SMED?",a:["Nach PDCA werden interne auf externe Vorg\u00e4nge umgewandelt.","Die Maschine wird nach der 5S Methode umgebaut.","Umstrukturierungspotenziale werden modifiziert f\u00fcr laufenden Betrieb.","Werkzeuge vormontieren und Baugruppen austauschen."],c:[1]},
+{q:"Welche L\u00f6sungsans\u00e4tze geh\u00f6ren nicht zu Phase 3 der SMED-Methode?",a:["Intelligente Mitarbeiter einstellen, z.B. Facharbeiter","Bei \u00e4hnlichen Produkten Poka Yoke-L\u00f6sungen implementieren","Bei arbeitsaufwendigen R\u00fcstabfolgen keine parallelen T\u00e4tigkeiten andenken.","R\u00fcstwege verk\u00fcrzen und Peripherie anpassen"],c:[2]},
+{q:"Was sind die Erfolgsfaktoren der SMED-Methode? (Teil 1)",a:["Standardisieren","autorit\u00e4rer F\u00fchrungsstil","Mitarbeitende und R\u00fcstteam qualifizieren","Verschwendungen reduzieren bzw. eliminieren"],c:[0,2,3]},
+{q:"Was sind die Erfolgsfaktoren der SMED-Methode? (Teil 2)",a:["Mitarbeitende und R\u00fcstteam qualifizieren","Verschwendungen reduzieren bzw. eliminieren","hohes Budget im TPM","Prozesse dauerhaft verbessern"],c:[0,1,3]},
+{q:"Worum geht es bei PDCA?",a:["Ein Probleml\u00f6sungsprozess aus vier Phasen.","Ein erfolgreicher Verbesserungsprozess erfordert standardisierte Schritte.","Der PDCA f\u00fchrt Mitarbeitende methodisch durch Verbesserungsprojekte.","Der PDCA ist eine Ersatzmethode f\u00fcr das Projektmanagement."],c:[0,1,2]},
+{q:"Welche Begriffe geh\u00f6ren zum PDCA-Zyklus? (Teil 1)",a:["Planen","Durchf\u00fchren","Vorrichtungen konstruieren","\u00dcberpr\u00fcfen"],c:[0,1,3]},
+{q:"Welche Begriffe geh\u00f6ren zum PDCA-Zyklus? (Teil 2)",a:["Vorrichtungen konstruieren","\u00dcberpr\u00fcfen","Standardisieren","Betriebsmittel einkaufen"],c:[1,2]},
+{q:"Welche Schritte werden in der Plan-Phase abgearbeitet? (Teil 1)",a:["Problem bestimmen, jedoch keine Ziele.","Istwert und Zielwert vergleichen, Abweichung ermitteln.","Methode f\u00fcr die Problemanalyse festlegen.","Analyse mit Lean-Werkzeugen."],c:[1,2,3]},
+{q:"Welche Schritte werden in der Plan-Phase abgearbeitet? (Teil 2)",a:["Methode f\u00fcr die Problemanalyse festlegen.","Mit Lean-Werkzeugen analysieren.","Eine genauere Analyse ist nicht erforderlich.","Mehrere L\u00f6sungen vorschlagen f\u00fcr nachhaltige, schnelle und billige L\u00f6sungen."],c:[0,1,3]},
+{q:"Welche Szenarien werden in der Do-Phase abgebildet?",a:["Bei einfachen Projekten sofort umsetzen, bei komplexen zuerst Testphase.","Geschwindigkeit z\u00e4hlt, ersten L\u00f6sungsvorschlag sofort umsetzen.","L\u00f6sung ohne Abstimmungen sofort umsetzen.","Wenn Abweichungen regelm\u00e4\u00dfig beseitigt werden, muss man nichts ver\u00e4ndern."],c:[0]},
+{q:"Was versteht man unter der Check-Phase?",a:["Umgesetzte L\u00f6sungen oder Hypothesentests validieren.","Ob alle Mitarbeitenden zufrieden sind.","Ergebnisse m\u00fcssen nicht \u00fcberpr\u00fcft werden.","Pr\u00fcfen ist Ressourcenverschwendung."],c:[0]},
+{q:"Was wird in der Act-/Standard-Phase gemacht?",a:["Auf Ergebnisse der Plan- und Check-Phase reagieren.","Gewonnenes Wissen wird standardisiert.","Feststellen, wer das Problem verursacht hat.","PDCA bewerten und wenn n\u00f6tig weiterentwickeln."],c:[0,1,3]},
+{q:"Shopfloor Management ist \u2026 (Teil 1)",a:["Konsequentes Entwickeln der Prozesse am Ort des Geschehens.","Fokus auf Standardabweichungen.","Beschleunigt Entscheidungen, entwickelt Mitarbeitende zu Verbesserungsmanagern.","Nicht motivierte Mitarbeitende herausfinden und entlassen."],c:[0,1,2]},
+{q:"Shopfloor Management ist \u2026 (Teil 2)",a:["Konsequentes Entwickeln der Prozesse am Ort des Geschehens.","Fokus auf Standardabweichungen.","Beschleunigt Entscheidungen, entwickelt Mitarbeitende zu Verbesserungsmanagern.","In der Welt der Wirtschaft \u201eup to date\u201c zu sein."],c:[0,1,2]},
+{q:"Was sind die Kernelemente des Shopfloor Management?",a:["Transparenz schaffen, Ist- und Sollzustand visualisieren.","Organisierte Zusammenarbeit zwischen F\u00fchrungskr\u00e4ften und Mitarbeitenden.","Definierte Vorgehensweise f\u00fcr zielorientierte Problembearbeitung.","Probleml\u00f6sung beschr\u00e4nkt sich auf den einzelnen Mitarbeitenden."],c:[0,1,2]},
+{q:"Was sind die wesentlichsten Erfolgsfaktoren im Shopfloor Management?",a:["\u201eGo and see\u201c \u2013 F\u00fchrungskr\u00e4fte kennen Prozesse und Probleme vor Ort.","Orientierung an den dominantesten Mitarbeitenden.","\u201eZuckerbrot und Peitsche\u201c","Wirksame F\u00fchrung umspannt 8-10 Mitarbeitende."],c:[0,3]},
+{q:"Was ist der Nutzen von Shopfloor Management? (Teil 1)",a:["Schnelle Reaktionen auf Abweichungen.","Der Umsatz durch den Vertrieb wird gesteigert.","Nachhaltige und strukturierte Probleml\u00f6sung.","Die Standzeiten der Werkzeuge erh\u00f6hen sich."],c:[0,2]},
+{q:"Was ist der Nutzen von Shopfloor Management? (Teil 2)",a:["Prozesse und Abl\u00e4ufe sind optimiert.","Prozesse sind robust gegen St\u00f6rungen von au\u00dfen.","Soll-/Ist-Zust\u00e4nde werden transparent dargestellt.","Alle Mitarbeitenden kommunizieren effizient."],c:[0,1,2,3]},
+{q:"Worum geht es beim KVP?",a:["Kontinuierliche Verbesserung in kleinen Schritten unter Einbeziehung aller.","Verbesserung in gro\u00dfen Schritten ohne Mitarbeitende.","Verbesserung in kleinen Schritten nur durch F\u00fchrungskr\u00e4fte.","Verbesserung in gro\u00dfen Schritten nur durch Mitarbeitende."],c:[0]},
+{q:"Welche Prinzipien gibt es im KVP-Prozess? (Teil 1)",a:["Mitarbeiterorientierung","Verbesserungs- und Erhaltungsorientierung","Prozess- und Ergebnisorientierung","Marktorientierung"],c:[0,1,2]},
+{q:"Welche Prinzipien gibt es im KVP-Prozess? (Teil 2)",a:["Marktorientierung","Qualit\u00e4tsorientierung","Kunden-Lieferanten-Beziehung","Innovationsorientierung"],c:[1,2]},
+{q:"Welche Arten von Verbesserungen gibt es?",a:["Prozess\u00fcbergreifende Verbesserungen","Verbesserungen in einzelnen Prozessen","Verbesserungen im pers\u00f6nlichen Umfeld","Verbesserungen nur in anderen Bereichen"],c:[0,1,2]},
+{q:"Was ist ein KVP-Team?",a:["Gruppe die konstruktiv zusammenarbeitet, um Probleme zu l\u00f6sen.","Gruppe in der sich jeder auf die anderen verl\u00e4sst.","Team identifiziert Probleme und \u00fcbergibt an F\u00fchrungskr\u00e4fte.","Team optimiert nur Prozesse, an denen kein Mitglied beteiligt ist."],c:[0]},
+{q:"Welche Arten von KVP-Teams gibt es?",a:["Mitarbeiter KVP","Experten KVP","Gesch\u00e4ftsf\u00fchrer KVP","Betriebsrats KVP"],c:[0,1]},
+{q:"Welche Vorteile haben KVP-Teams?",a:["Erfahrungen und Probleml\u00f6sungskapazit\u00e4ten aller werden integriert.","Jedes Teammitglied wird pers\u00f6nlich eingesch\u00fcchtert.","Kommunikative Lern- und Arbeitsatmosph\u00e4re.","Pr\u00e4mien entfallen."],c:[0,2]},
+{q:"Was ist eine Verbesserungskarte? (Teil 1)",a:["Wird von Mitarbeitenden f\u00fcr Einzelvorschl\u00e4ge verwendet.","Dient zum Darstellen der Vorschl\u00e4ge an der Infotafel.","Dient als Beweismittel \u201enicht sinnvoller\u201c Vorschl\u00e4ge.","Dient als Druckmittel f\u00fcr Personalma\u00dfnahmen."],c:[0,1]},
+{q:"Was ist eine Verbesserungskarte? (Teil 2)",a:["Dient zum Darstellen der Vorschl\u00e4ge an der Infotafel.","Dient zur Dokumentation.","Wird von Vorgesetzten f\u00fcr Einzelvorschl\u00e4ge verwendet.","Dient als Beweismittel \u201enicht sinnvoller\u201c Vorschl\u00e4ge."],c:[0,1]},
+{q:"Welche Bedeutung hat ausreichende Information im KVP?",a:["Information der Mitarbeitenden ist unwichtig.","Im KVP hat eine umfassende Information der Mitarbeitenden zu erfolgen.","Aus Datenschutzgr\u00fcnden muss der KVP geheim bleiben."],c:[1]},
+{q:"Welche Erfolge k\u00f6nnen mit dem KVP erreicht werden?",a:["Produktivit\u00e4t wird erh\u00f6ht.","Flexibilit\u00e4t in der Produktion wird erh\u00f6ht.","Qualit\u00e4t wird erh\u00f6ht.","Ums\u00e4tze werden gesteigert."],c:[0,1,2]},
+{q:"Worum geht es bei Brainstorming?",a:["Spontane Ideen\u00e4u\u00dferung ohne Kritik, viele Ideen sammeln.","Gut \u00fcberlegte Ideen mit anschlie\u00dfender Bewertung.","Finden von neuen Ideen in mehreren Wellen.","Sich inspirieren lassen von anderen Teilnehmenden."],c:[0]},
+{q:"Brainstorming wird \u2026 verwendet? (Teil 1)",a:["zum Einstieg in ein Problem","zum Entspannen in den Pausen","zur Produktentwicklung","als Ausweg bei festgefahrenen Kreativmeetings"],c:[0,2,3]},
+{q:"Brainstorming wird \u2026 verwendet? (Teil 2)",a:["zur Mitarbeiterentwicklung","als Ausweg bei festgefahrenen Kreativmeetings","zur Vorbereitung kreativer Meetings","als Vorstufe f\u00fcr weitere Kreativit\u00e4tstechniken"],c:[1,2,3]},
+{q:"Wie funktioniert die Brainstorming-Methode? (Teil 1)",a:["Problem wird durch den Moderator dargestellt.","Problem wird mit Anschauungsmaterial vertieft.","Teilnehmende sollten das Problem nicht genau kennen.","Teilnehmende nennen spontan ihre Ideen."],c:[0,1,3]},
+{q:"Wie funktioniert die Brainstorming-Methode? (Teil 2)",a:["Teilnehmende sollten das Problem nicht genau kennen.","Teilnehmende nennen spontan ihre Ideen.","Ideen werden auf Moderationskarten notiert.","Alle Ideen werden protokolliert."],c:[1,3]},
+{q:"Welche Regeln gibt es bei Brainstorming? (Teil 1)",a:["Keine Kritik an anderen Beitr\u00e4gen.","Unm\u00f6gliche Ideen nicht aussprechen.","Ideen anderer aufgreifen und weiterspielen.","Je k\u00fchner die Ideen desto besser."],c:[0,2,3]},
+{q:"Welche Regeln gibt es bei Brainstorming? (Teil 2)",a:["Ideen anderer aufgreifen und weiterspielen.","Je k\u00fchner die Ideen desto besser.","Vorsicht vor Blamage.","Nach den bekannten Ideen kommen die neuen (3. Welle)."],c:[0,1,3]},
+{q:"Durchf\u00fchrung und Moderation der Brainstorming-Methode? (Teil 1)",a:["Auswahl der \u201erichtigen\u201c Teilnehmer.","Kreatives Potenzial maximieren.","Keine \u201eQuerdenker\u201c im Team.","Immer ausgewiesene Fachexperten."],c:[0,1]},
+{q:"Durchf\u00fchrung und Moderation der Brainstorming-Methode? (Teil 2)",a:["Gruppengrö\u00dfe 6 bis 12 ist optimal.","Moderation sollte sehr streng sein.","Keine \u201eQuerdenker\u201c im Team.","Immer ausgewiesene Fachexperten."],c:[0]},
+{q:"Welche Eigenschaften ben\u00f6tigen die Teilnehmenden? (Teil 1)",a:["Sollen teilnehmen wollen.","Sollen negative Einstellung mitbringen.","Sollen der Aufgabe negativ gegen\u00fcberstehen.","Denkweise soll flexibel und schnell sein."],c:[0,3]},
+{q:"Welche Eigenschaften ben\u00f6tigen die Teilnehmenden? (Teil 2)",a:["Sollen der Aufgabe negativ gegen\u00fcberstehen.","Denkweise soll flexibel und schnell sein.","Denkweise soll frei von Zw\u00e4ngen und \u00c4ngsten sein.","Starke und unabh\u00e4ngige Pers\u00f6nlichkeiten sind wertvoll."],c:[1,2,3]},
+{q:"Was sollte auf der Checkliste einer Brainstorming-Runde stehen?",a:["Ist das Ziel klar?","Kennen die Teilnehmenden den Moderator?","Wurde eine Agenda aufgestellt?","Wurde an \u00d6ffnung und Auflockerung gedacht?"],c:[0,2,3]},
+{q:"Welche Vorteile gibt es bei Brainstorming? (Teil 1)",a:["Vorbereitung ist aufwendig.","Durchf\u00fchren erfordert gro\u00dfen Aufwand.","Liefert viele Ideen in kurzer Zeit.","Gute Gelegenheit f\u00fcr Diskussionen \u00fcber Vor- und Nachteile."],c:[2]},
+{q:"Welche Vorteile gibt es bei Brainstorming? (Teil 2)",a:["Vorbereitung ist aufwendig.","Durchf\u00fchren erfordert gro\u00dfen Aufwand.","Erm\u00f6glicht gute gegenseitige Anregung.","Gute Gelegenheit andere zu beschuldigen."],c:[2]},
+{q:"Was versteht man unter Wertstromanalyse? (Teil 1)",a:["Alle Aktivit\u00e4ten entlang des Herstellungsprozesses.","Nicht wertsch\u00f6pfende T\u00e4tigkeiten identifizieren.","Basis f\u00fcr einen Soll-Zustand entwickeln.","Nie das \u201eGanze\u201c verbessern, nur einzelne Abschnitte."],c:[0,1,2]},
+{q:"Was versteht man unter Wertstromanalyse? (Teil 2)",a:["Ist-Zustand graphisch darstellen.","Nicht wertsch\u00f6pfende T\u00e4tigkeiten identifizieren.","Basis f\u00fcr Soll-Zustand entwickeln.","Nie das \u201eGanze\u201c verbessern."],c:[0,1,2]},
+{q:"Vorgehensweise beim Wertstromdesign?",a:["Produktfamilie ausw\u00e4hlen, Kundenbedarf evaluieren, IST-Wertstrom erheben, Optimierungspotenzial erheben, Verschwendungen reduzieren.","IST-Wertstrom erheben, Optimierungspotenzial erheben, Verschwendungen reduzieren, Produktfamilie ausw\u00e4hlen, Kundenbedarf evaluieren.","Kundenbedarf evaluieren, IST-Wertstrom erheben, Produktfamilie ausw\u00e4hlen, Optimierungspotenzial erheben, Verschwendungen reduzieren.","Optimierungspotenzial erheben, Produktfamilie ausw\u00e4hlen, Kundenbedarf evaluieren, IST-Wertstrom erheben, Verschwendungen reduzieren."],c:[0,1,2,3]},
+{q:"Was wird bei der IST-Wertstromerhebung erfasst? (Teil 1)",a:["Produktionsprozesse","Materialfluss","Personaldaten","Verkaufszahlen"],c:[0,1]},
+{q:"Was wird bei der IST-Wertstromerhebung erfasst? (Teil 2)",a:["Informationsfluss","Arbeitssystemdaten","Kalkulationsgrundlagen","Preislisten"],c:[0,1]},
+{q:"Die Produktions-Durchlaufzeit beinhaltet \u2026 (Teil 1)",a:["Prozesszeit","Reichweite der Lagerbest\u00e4nde","Verteilzeit","Erholungszeit"],c:[0,1]},
+{q:"Die Produktions-Durchlaufzeit beinhaltet \u2026 (Teil 2)",a:["Bearbeitungszeit","Prozesszeit","Erholungszeit","R\u00fcstzeit"],c:[0,1]},
+{q:"Leitlinien f\u00fcr Soll-Wertstrom \u2026 (Teil 1)",a:["Flie\u00dfende Material- und Informationslogistik.","Kontinuierlicher Wertsch\u00f6pfungsfluss.","Reduzieren der Produktionskosten mit F\u00fchrungsprozessen.","Optimieren der gesamten Wertsch\u00f6pfungskette mit F\u00fchrungsprozessen."],c:[0,1]},
+{q:"Leitlinien f\u00fcr Soll-Wertstrom \u2026 (Teil 2)",a:["Flexibler Material- und Informationsfluss.","Produktionsprozesse mit geringen Best\u00e4nden.","Fertigen im Kundentakt mit Produktionssynchronisation.","Starre Produktion mit Erh\u00f6hen der Durchlaufzeit."],c:[0,1,2]},
+{q:"Ziele beim Gestalten des Soll-Wertstroms? (Teil 1)",a:["Durchlaufzeiten sind erh\u00f6ht.","Materialbest\u00e4nde sind verringert.","Lagerfl\u00e4chen sind verkleinert.","Lagerkosten sind verringert."],c:[1,2,3]},
+{q:"Ziele beim Gestalten des Soll-Wertstroms? (Teil 2)",a:["Anlageverm\u00f6gen ist reduziert.","Zahl der Arbeitsunf\u00e4lle ist gesenkt.","Arbeitsproduktivit\u00e4t ist erh\u00f6ht.","Effizienz des Maschinenparks ist gesteigert (OEE)."],c:[2,3]},
+{q:"Ziele beim Gestalten des Soll-Wertstroms? (Teil 3)",a:["Durchlaufzeiten sind erh\u00f6ht.","Anlageverm\u00f6gen ist reduziert.","Zahl der Arbeitsunf\u00e4lle ist gesenkt.","Durch pr\u00e4ventive Fehlererkennung ist die Qualit\u00e4t gesteigert."],c:[3]}
+];
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+const BUCKET_COUNT = 4;
+const ROUND_SIZE = 10;
+const STORAGE_KEY = 'lean_quiz_state';
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (s && s.buckets && s.buckets.length === questions.length) return s;
+  } catch(e) {}
+  return { buckets: new Array(questions.length).fill(0) };
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+let currentRound = [];
+let currentIndex = 0;
+let roundCorrect = 0;
+let roundWrong = 0;
+let answered = false;
+
+const app = document.getElementById('app');
+
+function getBucketCounts() {
+  const counts = [0,0,0,0];
+  state.buckets.forEach(b => counts[b]++);
+  return counts;
+}
+
+function renderBuckets() {
+  const counts = getBucketCounts();
+  const labels = ['Neu','Eimer 1','Eimer 2','Gelernt'];
+  return `<div class="buckets">${counts.map((c,i) =>
+    `<div class="bucket b${i}">${labels[i]}: ${c}</div>`
+  ).join('')}</div>`;
+}
+
+function pickRound() {
+  // Priority: bucket 0 first, then 1, then 2. Bucket 3 = done.
+  let pool = [];
+  for (let b = 0; b < 3; b++) {
+    const indices = [];
+    state.buckets.forEach((bk, i) => { if (bk === b) indices.push(i); });
+    if (indices.length > 0) pool.push(...indices);
+    if (pool.length >= ROUND_SIZE) break;
+  }
+  shuffle(pool);
+  return pool.slice(0, ROUND_SIZE);
+}
+
+function allDone() {
+  return state.buckets.every(b => b >= 3);
+}
+
+function showStart() {
+  const counts = getBucketCounts();
+  const total = questions.length;
+  const done = counts[3];
+  const pct = Math.round((done / total) * 100);
+
+  if (allDone()) {
+    app.innerHTML = `
+      <h1>Lean Quiz</h1>
+      ${renderBuckets()}
+      <div class="done-msg">
+        <h2>Geschafft!</h2>
+        <p>Alle ${total} Fragen sind im Eimer "Gelernt".</p>
+        <button class="reset-btn" onclick="resetAll()">Neustart</button>
+      </div>`;
+    return;
+  }
+
+  app.innerHTML = `
+    <h1>Lean Quiz</h1>
+    ${renderBuckets()}
+    <div class="progress-bar-bg"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div class="card" style="text-align:center">
+      <p style="margin-bottom:12px">${total - done} Fragen noch offen</p>
+      <button class="start-btn" onclick="startRound()">Runde starten (${Math.min(ROUND_SIZE, total - done)} Fragen)</button>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="reset-btn" onclick="resetAll()">Fortschritt zur\u00fccksetzen</button>
+    </div>`;
+}
+
+function startRound() {
+  currentRound = pickRound();
+  currentIndex = 0;
+  roundCorrect = 0;
+  roundWrong = 0;
+  showQuestion();
+}
+
+function showQuestion() {
+  if (currentIndex >= currentRound.length) {
+    showRoundSummary();
+    return;
+  }
+  answered = false;
+  const qi = currentRound[currentIndex];
+  const q = questions[qi];
+  const bucket = state.buckets[qi];
+
+  // Create shuffled answer indices
+  const answerOrder = shuffle([...Array(q.a.length).keys()]);
+  const isMulti = q.c.length !== 1;
+  const isNone = q.c.length === 0;
+
+  window._qi = qi;
+  window._answerOrder = answerOrder;
+  window._selected = new Set();
+
+  app.innerHTML = `
+    <h1>Lean Quiz</h1>
+    ${renderBuckets()}
+    <div class="round-progress">Frage ${currentIndex + 1} / ${currentRound.length} | Eimer: ${bucket}</div>
+    <div class="card">
+      <div class="question-text">${q.q}</div>
+      <div class="hint">${isNone ? 'Hinweis: Es kann sein, dass keine Antwort richtig ist.' : isMulti ? 'Mehrere Antworten m\u00f6glich.' : 'Eine Antwort ist richtig.'}</div>
+      <div class="answers" id="answers">
+        ${answerOrder.map((ai, idx) =>
+          `<button class="answer-btn" id="ans_${idx}" onclick="toggleAnswer(${idx})">${q.a[ai]}</button>`
+        ).join('')}
+      </div>
+      ${isNone ? '<div class="none-correct-note">Wenn keine richtig ist, einfach ohne Auswahl pr\u00fcfen.</div>' : ''}
+      <button class="check-btn" id="checkBtn" onclick="checkAnswer()">Pr\u00fcfen</button>
+    </div>`;
+}
+
+function toggleAnswer(idx) {
+  if (answered) return;
+  const sel = window._selected;
+  if (sel.has(idx)) sel.delete(idx); else sel.add(idx);
+  document.querySelectorAll('.answer-btn').forEach((btn, i) => {
+    btn.classList.toggle('selected', sel.has(i));
+  });
+}
+
+function checkAnswer() {
+  if (answered) return;
+  answered = true;
+  const qi = window._qi;
+  const q = questions[qi];
+  const order = window._answerOrder;
+  const selected = window._selected;
+
+  // Map selected button indices back to original answer indices
+  const selectedOriginal = new Set();
+  selected.forEach(idx => selectedOriginal.add(order[idx]));
+
+  const correctSet = new Set(q.c);
+  const isCorrect = correctSet.size === selectedOriginal.size &&
+    [...correctSet].every(c => selectedOriginal.has(c));
+
+  // Color the buttons
+  order.forEach((ai, idx) => {
+    const btn = document.getElementById('ans_' + idx);
+    btn.disabled = true;
+    if (correctSet.has(ai) && selectedOriginal.has(ai)) {
+      btn.classList.add('correct');
+    } else if (selectedOriginal.has(ai) && !correctSet.has(ai)) {
+      btn.classList.add('wrong');
+    } else if (correctSet.has(ai)) {
+      btn.classList.add('missed');
+    }
+  });
+
+  // Update bucket
+  if (isCorrect) {
+    roundCorrect++;
+    state.buckets[qi] = Math.min(3, state.buckets[qi] + 1);
+  } else {
+    roundWrong++;
+    if (state.buckets[qi] >= 2) {
+      state.buckets[qi] = 0; // back to 0 if in bucket 2 or 3
+    } else if (state.buckets[qi] === 1) {
+      state.buckets[qi] = 0;
+    }
+    // bucket 0 stays at 0
+  }
+  saveState(state);
+
+  const resultDiv = document.createElement('div');
+  resultDiv.className = 'result ' + (isCorrect ? 'correct' : 'wrong');
+  if (isCorrect) {
+    resultDiv.textContent = 'Richtig!';
+  } else if (q.c.length === 0) {
+    resultDiv.textContent = 'Falsch \u2013 Keine Antwort war richtig.';
+  } else {
+    resultDiv.textContent = 'Falsch \u2013 Die richtige(n) Antwort(en) sind markiert.';
+  }
+
+  const card = document.querySelector('.card');
+  const checkBtn = document.getElementById('checkBtn');
+  checkBtn.style.display = 'none';
+  card.appendChild(resultDiv);
+
+  const nextBtn = document.createElement('button');
+  nextBtn.className = 'next-btn';
+  nextBtn.textContent = currentIndex + 1 >= currentRound.length ? 'Ergebnis anzeigen' : 'N\u00e4chste Frage';
+  nextBtn.onclick = () => { currentIndex++; showQuestion(); };
+  card.appendChild(nextBtn);
+}
+
+function showRoundSummary() {
+  const counts = getBucketCounts();
+  const total = questions.length;
+  const done = counts[3];
+  const pct = Math.round((done / total) * 100);
+  const remaining = total - done;
+
+  app.innerHTML = `
+    <h1>Lean Quiz</h1>
+    ${renderBuckets()}
+    <div class="progress-bar-bg"><div class="progress-bar" style="width:${pct}%"></div></div>
+    <div class="summary">
+      <h2>Runde beendet</h2>
+      <div class="summary-stats">
+        <div class="summary-stat"><span>Richtig</span><span style="color:#27ae60;font-weight:700">${roundCorrect}</span></div>
+        <div class="summary-stat"><span>Falsch</span><span style="color:#e74c3c;font-weight:700">${roundWrong}</span></div>
+        <div class="summary-stat"><span>Gesamt gelernt</span><span>${done} / ${total}</span></div>
+      </div>
+      ${remaining > 0 ?
+        `<button class="continue-btn" onclick="startRound()">Weiter lernen (${Math.min(ROUND_SIZE, remaining)} Fragen)</button>
+         <button class="reset-btn" style="width:100%;margin-top:8px" onclick="showStart()">Pause</button>` :
+        `<div class="done-msg"><h2>Geschafft!</h2><p>Alle Fragen gelernt!</p></div>
+         <button class="reset-btn" style="width:100%" onclick="resetAll()">Neustart</button>`
+      }
+    </div>`;
+}
+
+function resetAll() {
+  if (!confirm('Fortschritt wirklich zur\u00fccksetzen?')) return;
+  state = { buckets: new Array(questions.length).fill(0) };
+  saveState(state);
+  showStart();
+}
+
+// Make functions global
+window.startRound = startRound;
+window.toggleAnswer = toggleAnswer;
+window.checkAnswer = checkAnswer;
+window.showStart = showStart;
+window.resetAll = resetAll;
+
+showStart();
+</script>
+</body>
+</html>
