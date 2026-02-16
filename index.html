@@ -9,8 +9,8 @@
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f5f5f5; color: #222; min-height: 100vh; }
 .container { max-width: 600px; margin: 0 auto; padding: 16px; }
 h1 { font-size: 1.4em; text-align: center; margin-bottom: 12px; }
-.buckets { display: flex; gap: 8px; margin-bottom: 16px; justify-content: center; flex-wrap: wrap; }
-.bucket { background: #fff; border-radius: 8px; padding: 8px 14px; font-size: 0.85em; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.buckets { display: flex; gap: 4px; margin-bottom: 16px; justify-content: center; }
+.bucket { background: #fff; border-radius: 8px; padding: 6px 8px; font-size: 0.75em; box-shadow: 0 1px 3px rgba(0,0,0,.1); white-space: nowrap; }
 .bucket.b0 { border-left: 4px solid #e74c3c; }
 .bucket.b1 { border-left: 4px solid #f39c12; }
 .bucket.b2 { border-left: 4px solid #3498db; }
@@ -18,7 +18,6 @@ h1 { font-size: 1.4em; text-align: center; margin-bottom: 12px; }
 .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.1); margin-bottom: 16px; }
 .question-num { font-size: 0.8em; color: #888; margin-bottom: 6px; }
 .question-text { font-size: 1.05em; font-weight: 600; margin-bottom: 16px; line-height: 1.4; }
-.hint { font-size: 0.8em; color: #888; margin-bottom: 12px; }
 .answers { display: flex; flex-direction: column; gap: 8px; }
 .answer-btn { background: #fff; border: 2px solid #ddd; border-radius: 8px; padding: 12px 14px; text-align: left; font-size: 0.95em; cursor: pointer; transition: border-color .15s, background .15s; line-height: 1.3; }
 .answer-btn:active { background: #f0f0f0; }
@@ -46,7 +45,6 @@ h1 { font-size: 1.4em; text-align: center; margin-bottom: 12px; }
 .done-msg { text-align: center; padding: 40px 20px; }
 .done-msg h2 { font-size: 1.5em; margin-bottom: 12px; color: #27ae60; }
 .reset-btn { background: #e74c3c; color: #fff; border: none; border-radius: 8px; padding: 12px 20px; font-size: 1em; cursor: pointer; margin-top: 16px; }
-.none-correct-note { font-size: 0.8em; color: #888; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -283,7 +281,7 @@ function getBucketCounts() {
 
 function renderBuckets() {
   const counts = getBucketCounts();
-  const labels = ['Neu','Eimer 1','Eimer 2','Gelernt'];
+  const labels = ['Neu','E1','E2','Gelernt'];
   return `<div class="buckets">${counts.map((c,i) =>
     `<div class="bucket b${i}">${labels[i]}: ${c}</div>`
   ).join('')}</div>`;
@@ -357,8 +355,6 @@ function showQuestion() {
 
   // Create shuffled answer indices
   const answerOrder = shuffle([...Array(q.a.length).keys()]);
-  const isMulti = q.c.length !== 1;
-  const isNone = q.c.length === 0;
 
   window._qi = qi;
   window._answerOrder = answerOrder;
@@ -370,13 +366,11 @@ function showQuestion() {
     <div class="round-progress">Frage ${currentIndex + 1} / ${currentRound.length} | Eimer: ${bucket}</div>
     <div class="card">
       <div class="question-text">${q.q}</div>
-      <div class="hint">${isNone ? 'Hinweis: Es kann sein, dass keine Antwort richtig ist.' : isMulti ? 'Mehrere Antworten m\u00f6glich.' : 'Eine Antwort ist richtig.'}</div>
       <div class="answers" id="answers">
         ${answerOrder.map((ai, idx) =>
           `<button class="answer-btn" id="ans_${idx}" onclick="toggleAnswer(${idx})">${q.a[ai]}</button>`
         ).join('')}
       </div>
-      ${isNone ? '<div class="none-correct-note">Wenn keine richtig ist, einfach ohne Auswahl pr\u00fcfen.</div>' : ''}
       <button class="check-btn" id="checkBtn" onclick="checkAnswer()">Pr\u00fcfen</button>
     </div>`;
 }
@@ -425,24 +419,13 @@ function checkAnswer() {
     state.buckets[qi] = Math.min(3, state.buckets[qi] + 1);
   } else {
     roundWrong++;
-    if (state.buckets[qi] >= 2) {
-      state.buckets[qi] = 0; // back to 0 if in bucket 2 or 3
-    } else if (state.buckets[qi] === 1) {
-      state.buckets[qi] = 0;
-    }
-    // bucket 0 stays at 0
+    state.buckets[qi] = 0;
   }
   saveState(state);
 
   const resultDiv = document.createElement('div');
   resultDiv.className = 'result ' + (isCorrect ? 'correct' : 'wrong');
-  if (isCorrect) {
-    resultDiv.textContent = 'Richtig!';
-  } else if (q.c.length === 0) {
-    resultDiv.textContent = 'Falsch \u2013 Keine Antwort war richtig.';
-  } else {
-    resultDiv.textContent = 'Falsch \u2013 Die richtige(n) Antwort(en) sind markiert.';
-  }
+  resultDiv.textContent = isCorrect ? 'Richtig!' : 'Falsch \u2013 Die richtigen Antworten sind markiert.';
 
   const card = document.querySelector('.card');
   const checkBtn = document.getElementById('checkBtn');
