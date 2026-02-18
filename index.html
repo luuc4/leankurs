@@ -288,14 +288,9 @@ function renderBuckets() {
 }
 
 function pickRound() {
-  // Priority: bucket 0 first, then 1, then 2. Bucket 3 = done.
-  let pool = [];
-  for (let b = 0; b < 3; b++) {
-    const indices = [];
-    state.buckets.forEach((bk, i) => { if (bk === b) indices.push(i); });
-    if (indices.length > 0) pool.push(...indices);
-    if (pool.length >= ROUND_SIZE) break;
-  }
+  // Random selection across all unlearned buckets (0–2)
+  const pool = [];
+  state.buckets.forEach((b, i) => { if (b < 3) pool.push(i); });
   shuffle(pool);
   return pool.slice(0, ROUND_SIZE);
 }
